@@ -23,6 +23,8 @@ import java.io.FileReader;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import org.springframework.batch.infrastructure.item.Chunk;
 import org.springframework.batch.infrastructure.item.ExecutionContext;
@@ -66,6 +68,28 @@ class MultiResourceItemWriterBuilderTests {
 		if (this.writer != null) {
 			this.writer.close();
 		}
+	}
+
+	@ParameterizedTest
+	@ValueSource(ints = { 0, -1 })
+	void testNonPositiveItemCountLimitPerResourceIsRejected(int itemCountLimitPerResource) {
+		MultiResourceItemWriterBuilder<String> builder = new MultiResourceItemWriterBuilder<String>()
+			.delegate(this.delegate)
+			.resource(new FileSystemResource(this.file))
+			.name("foo")
+			.itemCountLimitPerResource(itemCountLimitPerResource);
+
+		Exception exception = assertThrows(IllegalArgumentException.class, builder::build);
+		assertEquals("The item count limit per resource must be positive.", exception.getMessage());
+	}
+
+	@ParameterizedTest
+	@ValueSource(ints = { 0, -1 })
+	void testNonPositiveItemCountLimitPerResourceIsRejectedBySetter(int itemCountLimitPerResource) {
+		MultiResourceItemWriter<String> writer = new MultiResourceItemWriter<>(this.delegate);
+
+		assertThrows(IllegalArgumentException.class,
+				() -> writer.setItemCountLimitPerResource(itemCountLimitPerResource));
 	}
 
 	@Test

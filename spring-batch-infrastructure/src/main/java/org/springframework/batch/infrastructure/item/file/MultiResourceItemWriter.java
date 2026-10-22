@@ -44,6 +44,7 @@ import org.springframework.util.Assert;
  * @author Mahmoud Ben Hassine
  * @author Henning Pöttker
  * @author Jimmy Praet
+ * @author Sharang Gupta
  */
 public class MultiResourceItemWriter<T> extends AbstractItemStreamItemWriter<T> {
 
@@ -118,9 +119,10 @@ public class MultiResourceItemWriter<T> extends AbstractItemStreamItemWriter<T> 
 	 * After this limit is exceeded the next chunk will be written into newly created
 	 * resource.
 	 * @param itemCountLimitPerResource int item threshold used to determine when a new
-	 * resource should be created.
+	 * resource should be created. Must be positive.
 	 */
 	public void setItemCountLimitPerResource(int itemCountLimitPerResource) {
+		Assert.isTrue(itemCountLimitPerResource > 0, "The item count limit per resource must be positive.");
 		this.itemCountLimitPerResource = itemCountLimitPerResource;
 	}
 
