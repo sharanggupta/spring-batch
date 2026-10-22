@@ -32,6 +32,7 @@ import org.springframework.batch.infrastructure.item.ItemStreamReader;
  * @author Mahmoud Ben Hassine
  * @author Elimelec Burghelea
  * @author Yanming Zhou
+ * @author Sharang Gupta
  * @param <T> type of objects to read
  * @since 5.2
  */
@@ -79,8 +80,8 @@ public class CompositeItemReader<T> implements ItemStreamReader<T> {
 
 	@Override
 	public void update(ExecutionContext executionContext) throws ItemStreamException {
-		if (this.currentDelegate != null) {
-			this.currentDelegate.update(executionContext);
+		for (ItemStreamReader<? extends T> delegate : this.delegates) {
+			delegate.update(executionContext);
 		}
 	}
 

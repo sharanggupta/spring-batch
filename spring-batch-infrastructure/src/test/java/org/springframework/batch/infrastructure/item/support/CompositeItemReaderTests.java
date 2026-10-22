@@ -16,6 +16,7 @@
 package org.springframework.batch.infrastructure.item.support;
 
 import java.util.Arrays;
+import java.util.List;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -97,8 +98,69 @@ public class CompositeItemReaderTests {
 
 		// then
 		verify(reader1).update(executionContext);
-		verify(reader2, times(0)).update(executionContext); // reader1 is the current
-															// delegate in this setup
+		verify(reader2).update(executionContext); // all delegates save their state
+	}
+
+	@Test
+	void testCompositeItemReaderUpdateSavesTheStateOfAllDelegates() throws Exception {
+		// given
+		ExecutionContext executionContext = new ExecutionContext();
+		CompositeItemReader<String> compositeItemReader = new CompositeItemReader<>(Arrays
+			.asList(new StatefulReader("reader1", "a1", "a2", "a3"), new StatefulReader("reader2", "b1", "b2")));
+		compositeItemReader.open(executionContext);
+
+		// when: the second chunk spans both delegates
+		assertEquals("a1", compositeItemReader.read());
+		assertEquals("a2", compositeItemReader.read());
+		compositeItemReader.update(executionContext);
+		assertEquals("a3", compositeItemReader.read());
+		assertEquals("b1", compositeItemReader.read());
+		compositeItemReader.update(executionContext);
+		compositeItemReader.close();
+
+		// then: the state of both delegates is saved, and a restart resumes after it
+		assertEquals(3, executionContext.getInt("reader1.index"));
+		assertEquals(1, executionContext.getInt("reader2.index"));
+		CompositeItemReader<String> restartedItemReader = new CompositeItemReader<>(Arrays
+			.asList(new StatefulReader("reader1", "a1", "a2", "a3"), new StatefulReader("reader2", "b1", "b2")));
+		restartedItemReader.open(executionContext);
+		assertEquals("b2", restartedItemReader.read());
+		assertNull(restartedItemReader.read());
+		restartedItemReader.close();
+	}
+
+	private static final class StatefulReader implements ItemStreamReader<String> {
+
+		private final String name;
+
+		private final List<String> items;
+
+		private int index;
+
+		StatefulReader(String name, String... items) {
+			this.name = name;
+			this.items = List.of(items);
+		}
+
+		@Override
+		public void open(ExecutionContext executionContext) {
+			this.index = executionContext.getInt(this.name + ".index", 0);
+		}
+
+		@Override
+		public String read() {
+			return (this.index < this.items.size()) ? this.items.get(this.index++) : null;
+		}
+
+		@Override
+		public void update(ExecutionContext executionContext) {
+			executionContext.putInt(this.name + ".index", this.index);
+		}
+
+		@Override
+		public void close() {
+		}
+
 	}
 
 	@Test
